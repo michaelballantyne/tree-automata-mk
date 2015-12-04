@@ -126,7 +126,7 @@
 ; Implementation depends on the Scheme used, as we need a map. See mk.rkt
 ; and mk-vicare.scm.
 
-(define empty-c (cons 'any-automata))
+(define empty-c (cons 'any-automata '()))
 
 ; State object.
 ; The state is the value that is monadically passed through the search.
@@ -314,7 +314,7 @@
         [v (cdr shape-c)]) ; term that is a variable (walked)
     (let ([existing (lookup-c v st)])
       (if (eq? empty-c existing)
-        (let ([intersected (insersect a existing)])
+        (let ([intersected (intersect-driver a existing)])
           (if (automaton-non-empty intersected)
             (unit (set-c term intersected st))
             (mzero)))
@@ -332,15 +332,20 @@
          (if (var? t)
            ; intersect
            (apply-intersect (cons a t) st)
-           ; unfold
+           ; unfold. we know enough to resolve the constraint (if the term is atomic), or to
+           ; push the constraint down on to sub-elements (if the term is a pair). This second
+           ; case results in multiple answers: say x is constrained as (or (a . b) (c . d)), and
+           ; x is found to be (y . z). Then we should produce answers (and (y -> a) (z -> b)),
+           ; (and (y -> c) (z -> d))
            (let ([mappings ; list of alists (fresh var) -> tree automata to attach. May have dups
                   ((make-unfold var? walk (state-S st)) a t)])
-             (if (null? results)
+             (if (null? mappings)
                (mzero)
                (streamify (filter (lambda (a) a)
                                   (map (lambda (single)
                                          (and-foldl apply-intersect st single))
-                                       results))))))))))
+                                       mappings))))))))))
+; state -> stream
 (define (update-constraints pr st)
   (let ([rebound-var (car pr)]
         [new-term    (cdr pr)])
@@ -349,15 +354,22 @@
         (unit st)
         ((shapeo old-automaton new-term) (remove-c rebound-var st))))))
 
+
+
 (define ==
   (lambda (u v)
     (lambdag@ (st)
       (let-values (((S added) (unify u v (state-S st))))
         (if S
-          (and-foldl update-constraints (state S (state-C st)) added) ; TODO: THIS IS WRONG!
-          ; Need to handle case when shapeo produces a stream, not a single state.
+          (foldl
+            (lambda (added-el acc)
+              (bind acc (lambdag@ (st) (update-constraints added-el st))))
+            (unit (state S (state-C st)))
+            added)
           (mzero))))))
 
+
+(define reify (lambda (x) (lambda (y) y)))
 
 ; Constraints
 ; C refers to the constraint store map
