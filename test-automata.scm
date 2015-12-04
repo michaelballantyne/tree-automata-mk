@@ -18,10 +18,88 @@
        (make-production 'pair?
                         (list (list binding env)))))
 
-;(display (run 1 (q) (shapeo env '((a b) (c d)))))
-(display (run 1 (q) (shapeo env '((a . b) (c . d)))))
-(display "\n")
-(display (run 1 (q) (shapeo env '((a . (2 . 3)) (c . 1)))))
-(display "\n")
-(display (run 1 (q) (shapeo env '((5 . (2 . 3)) (c . 1)))))
-(display "\n")
+;(length (run* (q) (shapeo env '((a b) (c d)))))
+(test ""
+  (length (run* (q) (shapeo env '((a . b) (c . d)))))
+  1)
+
+(test ""
+  (length (run* (q) (shapeo env '((a . (2 . 3)) (c . 1)))))
+  1)
+
+(test "" (length (run* (q) (shapeo env '((5 . (2 . 3)) (c . 1)))))
+  0)
+
+(test "" (length (run* (q)
+              (== q '((a . (2 . 3)) (c . 1)))
+              (shapeo env q)))
+  1)
+
+(test "" (length (run* (q)
+              (fresh (a b)
+                (== a '(a . (2 . 3)))
+                (== b '(c . 1))
+                (== q (list a b))
+                (shapeo env q))))
+  1)
+
+(test "" (length (run* (q)
+              (fresh (a b c)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(c . 1))
+                (== q (list a b))
+                (shapeo env q))))
+  1)
+
+(test "" (length (run* (q)
+              (fresh (a b c)
+                (shapeo env q)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(c . 1))
+                (== q (list a b)))))
+  1)
+
+(test "" (length (run* (q)
+              (fresh (a b c)
+                (shapeo env q)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(2 . 1))
+                (== q (list a b)))))
+  0)
+
+(test ""
+  (length (run* (q)
+              (fresh (a b c)
+                (shapeo env q)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(c . 1))
+                (== q (list a b)))))
+  1)
+
+(test ""
+  (length (run* (q)
+              (fresh (a b c)
+                (shapeo env q)
+                (shapeo num c)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(c . 1))
+                (== q (list a b)))))
+  0)
+
+(test ""
+  (length (run* (q)
+              (fresh (a b c)
+                (shapeo env q)
+                (shapeo term1 c)
+                (== c '(2 . 3))
+                (== a `(a . ,c))
+                (== b '(c . 1))
+                (== q (list a b)))))
+  1)
+
+(display (run* (q) (shapeo env q)))

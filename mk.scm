@@ -314,11 +314,11 @@
         [v (cdr shape-c)]) ; term that is a variable (walked)
     (let ([existing (lookup-c v st)])
       (if (eq? empty-c existing)
+        (unit (set-c v a st))
         (let ([intersected (intersect-driver a existing)])
           (if (automaton-non-empty intersected)
-            (unit (set-c term intersected st))
-            (mzero)))
-        (unit (set-c term a st))))))
+            (unit (set-c v intersected st))
+            (mzero)))))))
 
 (define (streamify l)
   (if (null? l)
@@ -349,7 +349,7 @@
 (define (update-constraints pr st)
   (let ([rebound-var (car pr)]
         [new-term    (cdr pr)])
-    (let ([old-automaton (lookup-c rebound-var)])
+    (let ([old-automaton (lookup-c rebound-var st)])
       (if (eq? old-automaton empty-c)
         (unit st)
         ((shapeo old-automaton new-term) (remove-c rebound-var st))))))
