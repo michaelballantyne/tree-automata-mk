@@ -1,0 +1,3 @@
+[submodule "tree-automata"]
+	path = tree-automata
+	url = https://github.com/webyrd/tree-automata.git
