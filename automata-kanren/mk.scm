@@ -262,7 +262,7 @@
          ((fresh (q) g0 g ...
             (lambdag@ (st)
               (let ((st (state-with-scope st nonlocal-scope)))
-                (let ((z ((reify q) st)))
+                (let ((z (reify q st)))
                   (choice z empty-f)))))
           empty-state))))
     ((_ n (q0 q1 q ...) g0 g ...)
@@ -369,80 +369,6 @@
           (mzero))))))
 
 
-(define reify (lambda (x) (lambda (y) y)))
-
-; Constraints
-; C refers to the constraint store map
-; c refers to an individual constraint record
-
-
-; Requirements for type constraints:
-; 1. Must be positive, not negative. not-pairo wouldn't work.
-; 2. Each type must have infinitely many possible values to avoid
-;      incorrectness in combination with disequality constraints, like:
-;      (fresh (x) (booleano x) (=/= x #t) (=/= x #f))
-;(define type-constraint
-  ;(lambda (type-pred type-id)
-    ;(lambda (u)
-      ;(lambdag@ (st)
-        ;(let ((term (walk u (state-S st))))
-          ;(cond
-            ;((type-pred term) (unit st))
-            ;((var? term)
-             ;(let* ((c (lookup-c term st))
-                   ;(T (c-T c)))
-               ;(cond
-                 ;((eq? T type-id) (unit st))
-                 ;((not T) (unit (set-c term (c-with-T c type-id) st)))
-                 ;(else (mzero)))))
-            ;(else (mzero))))))))
-
-;(define symbolo (type-constraint symbol? 'symbolo))
-;(define numbero (type-constraint number? 'numbero))
-
-;(define (add-to-D st v d)
-  ;(let* ((c (lookup-c v st))
-         ;(c^ (c-with-D c (cons d (c-D c)))))
-    ;(set-c v c^ st)))
-
-;(define =/=*
-  ;(lambda (S+)
-    ;(lambdag@ (st)
-      ;(let-values (((S added) (unify* S+ (subst-with-scope (state-S st) nonlocal-scope))))
-        ;(cond
-          ;((not S) (unit st))
-          ;((null? added) (mzero))
-          ;(else
-            ;; Choose one of the disequality elements (el) to attach the constraint to. Only
-            ;; need to choose one because all must fail to cause the constraint to fail.
-            ;(let ((el (car added)))
-              ;(let ((st (add-to-D st (car el) added)))
-                ;(if (var? (cdr el))
-                  ;(add-to-D st (cdr el) added)
-                  ;st)))))))))
-
-;(define =/=
-  ;(lambda (u v)
-    ;(=/=* `((,u . ,v)))))
-
-;(define absento
-  ;(lambda (ground-atom term)
-    ;(lambdag@ (st)
-      ;(let ((term (walk term (state-S st))))
-        ;(cond
-          ;((pair? term)
-           ;(let ((st^ ((absento ground-atom (car term)) st)))
-             ;(and st^ ((absento ground-atom (cdr term)) st^))))
-          ;((eqv? term ground-atom) (mzero))
-          ;((var? term)
-           ;(let* ((c (lookup-c term st))
-                  ;(A (c-A c)))
-             ;(if (memv ground-atom A)
-               ;(unit st)
-               ;(let ((c^ (c-with-A c (cons ground-atom A))))
-                 ;(unit (set-c term c^ st))))))
-          ;(else (unit st)))))))
-
 ;; Fold lst with proc and initial value init. If proc ever returns #f,
 ;; return with #f immediately. Used for applying a series of constraints
 ;; to a state, failing if any operation fails.
@@ -452,50 +378,54 @@
     (let ([res (proc (car lst) init)])
       (and res (and-foldl proc res (cdr lst))))))
 
-;(define ==
-  ;(lambda (u v)
-    ;(lambdag@ (st)
-      ;(let-values (((S added) (unify u v (state-S st))))
-        ;(if S
-          ;(and-foldl update-constraints (state S (state-C st)) added)
-          ;(mzero))))))
 
+(define walk*
+  (lambda (w S)
+    (let ((v (walk w S)))
+      (cond
+        ((var? v) v)
+        ((pair? v)
+         (cons
+           (walk* (car v) S)
+           (walk* (cdr v) S)))
+        (else v)))))
 
-;; Not fully optimized. Could do absento update with fewer hash-refs / hash-sets.
-;(define update-constraints
-  ;(lambda (a st)
-    ;(let ([old-c (lookup-c (lhs a) st)])
-      ;(if (eq? old-c empty-c)
-        ;st
-        ;(let ((st (remove-c (lhs a) st)))
-         ;(and-foldl (lambda (op st) (op st)) st
-          ;(append
-            ;(if (eq? (c-T old-c) 'symbolo)
-              ;(list (symbolo (rhs a)))
-              ;'())
-            ;(if (eq? (c-T old-c) 'numbero)
-              ;(list (numbero (rhs a)))
-              ;'())
-            ;(map (lambda (atom) (absento atom (rhs a))) (c-A old-c))
-            ;(map (lambda (d) (=/=* d)) (c-D old-c)))))))))
+(define reify-s
+  (lambda (v S)
+    (let ((v (walk v S)))
+      (cond
+        ((var? v)
+         (subst-add S v (reify-name (subst-length S))))
+        ((pair? v) (reify-s (cdr v)
+                     (reify-s (car v) S)))
+        (else S)))))
 
+(define reify-name
+  (lambda (n)
+    (string->symbol
+      (string-append "_" "." (number->string n)))))
 
-;; Reification
+(define (reify-shapes vars renaming-subst C)
+  (define constrained-vars
+    (sort
+      (filter
+        (lambda (var)
+          (hash-has-key? C var))
+        vars)
+      <
+      #:key
+      (lambda (var)
+        (string->number (second (string-split "." (symbol->string (subst-lookup var renaming-subst))))))))
+  (for/list ([var constrained-vars])
+    (list (subst-lookup var renaming-subst) (map string->symbol (automaton-name (hash-ref C var))))))
 
-;(define walk*
-  ;(lambda (v S)
-    ;(let ((v (walk v S)))
-      ;(cond
-        ;((var? v) v)
-        ;((pair? v)
-         ;(cons (walk* (car v) S) (walk* (cdr v) S)))
-        ;(else v)))))
-
-;(define vars
-  ;(lambda (term acc)
-    ;(cond
-      ;((var? term) (cons term acc))
-      ;((pair? term)
-       ;(vars (cdr term) (vars (car term) acc)))
-      ;(else acc))))
-
+(define reify
+  (lambda (v st)
+    (let ((v (walk* v (state-S st))))
+      (let ([renaming-subst (reify-s v (subst-with-scope empty-subst nonlocal-scope))])
+        (let ([reified-term (walk* v renaming-subst)]
+              [shape-constraints (reify-shapes (hash-keys (subst-map renaming-subst)) renaming-subst (state-C st))])
+          (if (null? shape-constraints)
+            reified-term
+            (list reified-term
+                  (cons 'shapeo shape-constraints))))))))

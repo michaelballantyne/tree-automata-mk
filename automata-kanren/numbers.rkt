@@ -1,3 +1,9 @@
+#lang racket
+
+(require automata-kanren)
+
+(provide (all-defined-out))
+
 (define appendo
   (lambda (l s out)
     (conde
