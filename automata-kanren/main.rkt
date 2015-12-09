@@ -1,12 +1,15 @@
 #lang racket
 
 (provide run run*
-         == =/=
+         ==
          fresh
          conde
-         symbolo numbero
-         absento
-         (all-defined-out))
+         shapeo
+         define-automata
+         clear-caches!
+         )
+
+(require tree-automata)
 
 ;; extra stuff for racket
 ;; due mostly to samth

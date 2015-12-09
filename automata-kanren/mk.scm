@@ -315,7 +315,7 @@
     (let ([existing (lookup-c v st)])
       (if (eq? empty-c existing)
         (unit (set-c v a st))
-        (let ([intersected (intersect-driver a existing)])
+        (let ([intersected (intersect! a existing)])
           (if (automaton-non-empty intersected)
             (unit (set-c v intersected st))
             (mzero)))))))
