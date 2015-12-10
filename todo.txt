@@ -1,0 +1,17 @@
+
+atomic exactly-equal constructor (numbers, symbols)
+atomic any-except constructor (numbers, symbols)
+disequality constraints between variables constrained to be atomic types. (exception if not so constrained)
+singleton productions (like null?, the exact-symbol? constructor we plan to add, etc) should ground values in the substitution when unfolded
+
+
+later, full term disequality. Needs to do finite-domain style enumeration to check.
+    in every case where a tree automata has finitely many satisfying values, can we enumerate them?
+
+maybe absento, of either ground atom or general variety.
+reification could be smarter about recognizing when an intersection '("a1" "a2") is just '("a2") and not creating or reifying a new automata
+
+
+maybe go back to alists for name-to-automata-map
+
+

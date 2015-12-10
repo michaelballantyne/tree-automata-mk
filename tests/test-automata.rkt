@@ -119,3 +119,30 @@
   (run* (r)
     (logo '(0 1 1 1) '(0 1) '(1 1) r))
   (list `(0 1 1)))
+
+
+(check-equal?
+  (run* (q)
+    (shapeo sym q)
+    (shapeo term1 q))
+  '((_.0 (shapeo (_.0 (sym term1))))))
+
+(check-equal?
+  (run* (q)
+    (shapeo term1 q)
+    (shapeo sym q))
+  '((_.0 (shapeo (_.0 (sym term1))))))
+
+
+(check-equal?
+  (run* (q)
+    (shapeo term1 q)
+    (shapeo sym q)
+    (shapeo sym q))
+  '((_.0 (shapeo (_.0 (sym term1))))))
+
+; currently failing. Test is correct.
+(check-equal?
+  (run* (q)
+    (shapeo nil q))
+  '(()))
